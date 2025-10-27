@@ -866,6 +866,8 @@ pub struct JonGuiDataSystem {
     pub cv_dumping: bool,
     #[prost(bool, tag = "23")]
     pub recognition_mode: bool,
+    #[prost(enumeration = "JonGuiDataAccumulatorStateIdx", tag = "24")]
+    pub accumulator_state: i32,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataLrf {
