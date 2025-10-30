@@ -3,7 +3,7 @@
 pub struct Root {
     #[prost(
         oneof = "root::Cmd",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26"
     )]
     pub cmd: ::core::option::Option<root::Cmd>,
 }
@@ -61,6 +61,8 @@ pub mod root {
         ScanAddNode(super::ScanAddNode),
         #[prost(message, tag = "25")]
         HaltWithNdc(super::HaltWithNdc),
+        #[prost(message, tag = "26")]
+        SetSpiritLevel(super::SetSpiritLevel),
     }
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
@@ -336,4 +338,19 @@ pub struct HaltWithNdc {
     /// System monotonic time from state when gesture ended
     #[prost(uint64, tag = "5")]
     pub state_time: u64,
+}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct SetSpiritLevel {
+    /// elevation correction fot the rotary
+    #[prost(double, tag = "1")]
+    pub pitch: f64,
+    /// bank correction for the rotary
+    #[prost(double, tag = "2")]
+    pub roll: f64,
+    /// offset pan of the rotary
+    #[prost(double, tag = "3")]
+    pub pan_offset: f64,
+    /// offset tilt for the rotary
+    #[prost(double, tag = "4")]
+    pub tilt_offset: f64,
 }

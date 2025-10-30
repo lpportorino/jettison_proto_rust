@@ -961,6 +961,9 @@ pub struct JonGuiDataGps {
     pub fix_type: i32,
     #[prost(bool, tag = "8")]
     pub use_manual: bool,
+    /// GPS timestamp from satellite (Unix time in seconds)
+    #[prost(int64, tag = "9")]
+    pub timestamp: i64,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataCompass {
