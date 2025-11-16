@@ -852,6 +852,8 @@ pub struct JonGuiDataCameraDay {
     pub horizontal_fov_degrees: f64,
     #[prost(double, tag = "13")]
     pub vertical_fov_degrees: f64,
+    #[prost(bool, tag = "14")]
+    pub is_started: bool,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataRotary {
@@ -889,6 +891,8 @@ pub struct JonGuiDataRotary {
     pub sun_elevation: f64,
     #[prost(message, optional, tag = "17")]
     pub current_scan_node: ::core::option::Option<ScanNode>,
+    #[prost(bool, tag = "18")]
+    pub is_started: bool,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct ScanNode {
@@ -979,6 +983,8 @@ pub struct JonGuiDataGps {
     /// GPS timestamp from satellite (Unix time in seconds)
     #[prost(int64, tag = "9")]
     pub timestamp: i64,
+    #[prost(bool, tag = "10")]
+    pub is_started: bool,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataCameraHeat {
@@ -1008,6 +1014,8 @@ pub struct JonGuiDataCameraHeat {
     pub horizontal_fov_degrees: f64,
     #[prost(double, tag = "13")]
     pub vertical_fov_degrees: f64,
+    #[prost(bool, tag = "14")]
+    pub is_started: bool,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataActualSpaceTime {
@@ -1043,6 +1051,8 @@ pub struct JonGuiDataDayCamGlassHeater {
     pub temperature: f64,
     #[prost(bool, tag = "2")]
     pub status: bool,
+    #[prost(bool, tag = "3")]
+    pub is_started: bool,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataCompassCalibration {
@@ -1077,6 +1087,8 @@ pub struct JonGuiDataLrf {
     pub is_refining: bool,
     #[prost(bool, tag = "8")]
     pub is_continuous_measuring: bool,
+    #[prost(bool, tag = "9")]
+    pub is_started: bool,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataTarget {
@@ -1149,6 +1161,8 @@ pub struct JonGuiDataCompass {
     pub magnetic_declination: f64,
     #[prost(bool, tag = "7")]
     pub calibrating: bool,
+    #[prost(bool, tag = "8")]
+    pub is_started: bool,
 }
 /// Root message
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
