@@ -844,6 +844,8 @@ pub struct JonGuiDataCameraDay {
     pub auto_focus: bool,
     #[prost(bool, tag = "9")]
     pub auto_iris: bool,
+    #[prost(bool, tag = "15")]
+    pub auto_gain: bool,
     #[prost(double, tag = "10")]
     pub digital_zoom_level: f64,
     #[prost(double, tag = "11")]
