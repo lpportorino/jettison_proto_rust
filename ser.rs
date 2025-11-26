@@ -807,6 +807,38 @@ impl JonGuiDataClientType {
         }
     }
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum JonGuiDataExtBatStatus {
+    Unspecified = 0,
+    Charging = 1,
+    Discharging = 2,
+    Balancing = 3,
+}
+impl JonGuiDataExtBatStatus {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "JON_GUI_DATA_EXT_BAT_STATUS_UNSPECIFIED",
+            Self::Charging => "JON_GUI_DATA_EXT_BAT_STATUS_CHARGING",
+            Self::Discharging => "JON_GUI_DATA_EXT_BAT_STATUS_DISCHARGING",
+            Self::Balancing => "JON_GUI_DATA_EXT_BAT_STATUS_BALANCING",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "JON_GUI_DATA_EXT_BAT_STATUS_UNSPECIFIED" => Some(Self::Unspecified),
+            "JON_GUI_DATA_EXT_BAT_STATUS_CHARGING" => Some(Self::Charging),
+            "JON_GUI_DATA_EXT_BAT_STATUS_DISCHARGING" => Some(Self::Discharging),
+            "JON_GUI_DATA_EXT_BAT_STATUS_BALANCING" => Some(Self::Balancing),
+            _ => None,
+        }
+    }
+}
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataRecOsd {
     #[prost(enumeration = "JonGuiDataRecOsdScreen", tag = "1")]
@@ -963,6 +995,10 @@ pub struct JonGuiDataSystem {
     pub recognition_mode: bool,
     #[prost(enumeration = "JonGuiDataAccumulatorStateIdx", tag = "24")]
     pub accumulator_state: i32,
+    #[prost(int32, tag = "25")]
+    pub ext_bat_capacity: i32,
+    #[prost(enumeration = "JonGuiDataExtBatStatus", tag = "26")]
+    pub ext_bat_status: i32,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataGps {
