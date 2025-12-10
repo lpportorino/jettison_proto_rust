@@ -809,6 +809,41 @@ impl JonGuiDataClientType {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
+pub enum JonGuiDataClientApp {
+    Unspecified = 0,
+    BrowserUi = 1,
+    BrowserMap = 2,
+    DesktopNative = 3,
+    MobileNative = 4,
+}
+impl JonGuiDataClientApp {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "JON_GUI_DATA_CLIENT_APP_UNSPECIFIED",
+            Self::BrowserUi => "JON_GUI_DATA_CLIENT_APP_BROWSER_UI",
+            Self::BrowserMap => "JON_GUI_DATA_CLIENT_APP_BROWSER_MAP",
+            Self::DesktopNative => "JON_GUI_DATA_CLIENT_APP_DESKTOP_NATIVE",
+            Self::MobileNative => "JON_GUI_DATA_CLIENT_APP_MOBILE_NATIVE",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "JON_GUI_DATA_CLIENT_APP_UNSPECIFIED" => Some(Self::Unspecified),
+            "JON_GUI_DATA_CLIENT_APP_BROWSER_UI" => Some(Self::BrowserUi),
+            "JON_GUI_DATA_CLIENT_APP_BROWSER_MAP" => Some(Self::BrowserMap),
+            "JON_GUI_DATA_CLIENT_APP_DESKTOP_NATIVE" => Some(Self::DesktopNative),
+            "JON_GUI_DATA_CLIENT_APP_MOBILE_NATIVE" => Some(Self::MobileNative),
+            _ => None,
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
 pub enum JonGuiDataExtBatStatus {
     Unspecified = 0,
     Charging = 1,
