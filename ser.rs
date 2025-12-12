@@ -1107,6 +1107,53 @@ pub struct JonGuiDataActualSpaceTime {
     #[prost(int64, tag = "7")]
     pub timestamp: i64,
 }
+/// Power module state for a single channel (S0-S7)
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct JonGuiDataPowerModule {
+    /// Volts
+    #[prost(double, tag = "1")]
+    pub voltage: f64,
+    /// Amps
+    #[prost(double, tag = "2")]
+    pub current: f64,
+    /// Watts
+    #[prost(double, tag = "3")]
+    pub power: f64,
+    /// Channel power state
+    #[prost(bool, tag = "4")]
+    pub is_on: bool,
+    /// Overcurrent/fault alarm
+    #[prost(bool, tag = "5")]
+    pub has_alarm: bool,
+}
+/// Power state for all 8 channels
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct JonGuiDataPower {
+    /// GPS
+    #[prost(message, optional, tag = "1")]
+    pub s0: ::core::option::Option<JonGuiDataPowerModule>,
+    /// Compass
+    #[prost(message, optional, tag = "2")]
+    pub s1: ::core::option::Option<JonGuiDataPowerModule>,
+    /// LRF (Laser Range Finder)
+    #[prost(message, optional, tag = "3")]
+    pub s2: ::core::option::Option<JonGuiDataPowerModule>,
+    /// Day Camera Lens
+    #[prost(message, optional, tag = "4")]
+    pub s3: ::core::option::Option<JonGuiDataPowerModule>,
+    /// Thermal Camera
+    #[prost(message, optional, tag = "5")]
+    pub s4: ::core::option::Option<JonGuiDataPowerModule>,
+    /// ORIN NUC (Main compute)
+    #[prost(message, optional, tag = "6")]
+    pub s5: ::core::option::Option<JonGuiDataPowerModule>,
+    /// Thermal Core
+    #[prost(message, optional, tag = "7")]
+    pub s6: ::core::option::Option<JonGuiDataPowerModule>,
+    /// Heater / Spare
+    #[prost(message, optional, tag = "8")]
+    pub s7: ::core::option::Option<JonGuiDataPowerModule>,
+}
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataTime {
     #[prost(int64, tag = "1")]
@@ -1271,4 +1318,6 @@ pub struct JonGuiState {
     pub day_cam_glass_heater: ::core::option::Option<JonGuiDataDayCamGlassHeater>,
     #[prost(message, optional, tag = "25")]
     pub actual_space_time: ::core::option::Option<JonGuiDataActualSpaceTime>,
+    #[prost(message, optional, tag = "26")]
+    pub power: ::core::option::Option<JonGuiDataPower>,
 }
