@@ -1332,6 +1332,12 @@ pub struct JonGuiState {
     /// Heat pipeline GStreamer buffer PTS in nanoseconds
     #[prost(uint64, tag = "5")]
     pub frame_pts_heat_ns: u64,
+    /// Monotonic time when day frame was captured (microseconds)
+    #[prost(uint64, tag = "6")]
+    pub frame_monotonic_day_us: u64,
+    /// Monotonic time when heat frame was captured (microseconds)
+    #[prost(uint64, tag = "7")]
+    pub frame_monotonic_heat_us: u64,
     #[prost(message, optional, tag = "13")]
     pub system: ::core::option::Option<JonGuiDataSystem>,
     #[prost(message, optional, tag = "14")]
