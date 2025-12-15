@@ -2,5 +2,5 @@
 
 Auto-generated Rust bindings using prost.
 
-Generated: 2025-12-12 14:19:50 UTC
-Commit: 3e3c9e44954acb54635218cdb9b7e3ed64b38ba4
+Generated: 2025-12-15 12:34:21 UTC
+Commit: 3096e74a7c2f77b6a90b986288290e4fe6a4f941

@@ -874,6 +874,38 @@ impl JonGuiDataExtBatStatus {
         }
     }
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum JonGuiDataStateSource {
+    Unspecified = 0,
+    DayPipeline = 1,
+    HeatPipeline = 2,
+    System = 3,
+}
+impl JonGuiDataStateSource {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "JON_GUI_DATA_STATE_SOURCE_UNSPECIFIED",
+            Self::DayPipeline => "JON_GUI_DATA_STATE_SOURCE_DAY_PIPELINE",
+            Self::HeatPipeline => "JON_GUI_DATA_STATE_SOURCE_HEAT_PIPELINE",
+            Self::System => "JON_GUI_DATA_STATE_SOURCE_SYSTEM",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "JON_GUI_DATA_STATE_SOURCE_UNSPECIFIED" => Some(Self::Unspecified),
+            "JON_GUI_DATA_STATE_SOURCE_DAY_PIPELINE" => Some(Self::DayPipeline),
+            "JON_GUI_DATA_STATE_SOURCE_HEAT_PIPELINE" => Some(Self::HeatPipeline),
+            "JON_GUI_DATA_STATE_SOURCE_SYSTEM" => Some(Self::System),
+            _ => None,
+        }
+    }
+}
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataRecOsd {
     #[prost(enumeration = "JonGuiDataRecOsdScreen", tag = "1")]
@@ -1292,6 +1324,14 @@ pub struct JonGuiState {
     /// System monotonic time in microseconds
     #[prost(uint64, tag = "2")]
     pub system_monotonic_time_us: u64,
+    #[prost(enumeration = "JonGuiDataStateSource", tag = "3")]
+    pub state_source: i32,
+    /// Day pipeline GStreamer buffer PTS in nanoseconds
+    #[prost(uint64, tag = "4")]
+    pub frame_pts_day_ns: u64,
+    /// Heat pipeline GStreamer buffer PTS in nanoseconds
+    #[prost(uint64, tag = "5")]
+    pub frame_pts_heat_ns: u64,
     #[prost(message, optional, tag = "13")]
     pub system: ::core::option::Option<JonGuiDataSystem>,
     #[prost(message, optional, tag = "14")]
