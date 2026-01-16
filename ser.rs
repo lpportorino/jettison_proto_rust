@@ -8,6 +8,33 @@ pub struct JonGuiDataMeteo {
     #[prost(double, tag = "3")]
     pub pressure: f64,
 }
+/// Structured version for opaque payloads.
+/// Enables simple numeric comparison without string parsing.
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct JonOpaquePayloadVersion {
+    #[prost(uint32, tag = "1")]
+    pub major: u32,
+    #[prost(uint32, tag = "2")]
+    pub minor: u32,
+    /// Can be timestamp (ms since epoch) or build number
+    #[prost(uint64, tag = "3")]
+    pub build: u64,
+}
+/// Opaque extension payload for subsystem-specific data.
+/// Transport layer passes through without interpretation.
+/// Handlers match on type_uuid and check version compatibility.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct JonOpaquePayload {
+    /// UUIDv7 identifying the payload type (e.g., "019415a9-5c34-7def-8000-000000000001")
+    #[prost(string, tag = "1")]
+    pub type_uuid: ::prost::alloc::string::String,
+    /// Structured version - handler decides compatibility logic
+    #[prost(message, optional, tag = "2")]
+    pub version: ::core::option::Option<JonOpaquePayloadVersion>,
+    /// Opaque binary payload
+    #[prost(bytes = "vec", tag = "3")]
+    pub payload: ::prost::alloc::vec::Vec<u8>,
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum JonGuiDataVideoChannelHeatFilters {
@@ -944,6 +971,8 @@ pub struct JonGuiDataRotary {
     pub current_scan_node: ::core::option::Option<ScanNode>,
     #[prost(bool, tag = "18")]
     pub is_started: bool,
+    #[prost(message, optional, tag = "19")]
+    pub meteo: ::core::option::Option<JonGuiDataMeteo>,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct ScanNode {
@@ -1000,6 +1029,8 @@ pub struct JonGuiDataGps {
     pub timestamp: i64,
     #[prost(bool, tag = "10")]
     pub is_started: bool,
+    #[prost(message, optional, tag = "11")]
+    pub meteo: ::core::option::Option<JonGuiDataMeteo>,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataCompass {
@@ -1019,6 +1050,8 @@ pub struct JonGuiDataCompass {
     pub calibrating: bool,
     #[prost(bool, tag = "8")]
     pub is_started: bool,
+    #[prost(message, optional, tag = "9")]
+    pub meteo: ::core::option::Option<JonGuiDataMeteo>,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataTime {
@@ -1153,6 +1186,8 @@ pub struct JonGuiDataLrf {
     pub is_continuous_measuring: bool,
     #[prost(bool, tag = "9")]
     pub is_started: bool,
+    #[prost(message, optional, tag = "10")]
+    pub meteo: ::core::option::Option<JonGuiDataMeteo>,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataTarget {
@@ -1256,6 +1291,8 @@ pub struct JonGuiDataCameraHeat {
     pub vertical_fov_degrees: f64,
     #[prost(bool, tag = "14")]
     pub is_started: bool,
+    #[prost(message, optional, tag = "15")]
+    pub meteo: ::core::option::Option<JonGuiDataMeteo>,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataCameraDay {
@@ -1289,6 +1326,8 @@ pub struct JonGuiDataCameraDay {
     pub vertical_fov_degrees: f64,
     #[prost(bool, tag = "14")]
     pub is_started: bool,
+    #[prost(message, optional, tag = "16")]
+    pub meteo: ::core::option::Option<JonGuiDataMeteo>,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataDayCamGlassHeater {
@@ -1298,6 +1337,8 @@ pub struct JonGuiDataDayCamGlassHeater {
     pub status: bool,
     #[prost(bool, tag = "3")]
     pub is_started: bool,
+    #[prost(message, optional, tag = "4")]
+    pub meteo: ::core::option::Option<JonGuiDataMeteo>,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataRecOsd {
@@ -1317,7 +1358,7 @@ pub struct JonGuiDataRecOsd {
     pub day_crosshair_offset_vertical: i32,
 }
 /// Root message
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct JonGuiState {
     #[prost(uint32, tag = "1")]
     pub protocol_version: u32,
@@ -1338,6 +1379,9 @@ pub struct JonGuiState {
     /// Monotonic time when heat frame was captured (microseconds)
     #[prost(uint64, tag = "7")]
     pub frame_monotonic_heat_us: u64,
+    /// Opaque payloads for subsystem-specific extensions
+    #[prost(message, repeated, tag = "8")]
+    pub opaque_payloads: ::prost::alloc::vec::Vec<JonOpaquePayload>,
     #[prost(message, optional, tag = "13")]
     pub system: ::core::option::Option<JonGuiDataSystem>,
     #[prost(message, optional, tag = "14")]
