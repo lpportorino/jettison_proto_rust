@@ -1165,6 +1165,14 @@ pub struct JonGuiDataPower {
     /// Heater / Spare
     #[prost(message, optional, tag = "8")]
     pub s7: ::core::option::Option<JonGuiDataPowerModule>,
+    /// Battery state (moved from system for typed fragments)
+    #[prost(enumeration = "JonGuiDataAccumulatorStateIdx", tag = "9")]
+    pub accumulator_state: i32,
+    /// External battery capacity percentage
+    #[prost(int32, tag = "10")]
+    pub ext_bat_capacity: i32,
+    #[prost(enumeration = "JonGuiDataExtBatStatus", tag = "11")]
+    pub ext_bat_status: i32,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataLrf {
