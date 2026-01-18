@@ -933,6 +933,93 @@ impl JonGuiDataStateSource {
         }
     }
 }
+/// CV Gateway state enrichment - autofocus metrics and sweep status
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct JonGuiDataCv {
+    /// Day channel autofocus
+    #[prost(enumeration = "jon_gui_data_cv::AutofocusState", tag = "1")]
+    pub autofocus_state_day: i32,
+    #[prost(double, tag = "2")]
+    pub sharpness_day: f64,
+    #[prost(double, tag = "3")]
+    pub best_sharpness_day: f64,
+    #[prost(int32, tag = "4")]
+    pub sweep_progress_day: i32,
+    #[prost(double, tag = "5")]
+    pub best_focus_pos_day: f64,
+    /// Heat channel autofocus
+    #[prost(enumeration = "jon_gui_data_cv::AutofocusState", tag = "10")]
+    pub autofocus_state_heat: i32,
+    #[prost(double, tag = "11")]
+    pub sharpness_heat: f64,
+    #[prost(double, tag = "12")]
+    pub best_sharpness_heat: f64,
+    #[prost(int32, tag = "13")]
+    pub sweep_progress_heat: i32,
+    #[prost(double, tag = "14")]
+    pub best_focus_pos_heat: f64,
+    /// ROI for sharpness calculation (NDC coords: -1 to 1)
+    #[prost(double, tag = "20")]
+    pub roi_x1: f64,
+    #[prost(double, tag = "21")]
+    pub roi_y1: f64,
+    #[prost(double, tag = "22")]
+    pub roi_x2: f64,
+    #[prost(double, tag = "23")]
+    pub roi_y2: f64,
+}
+/// Nested message and enum types in `JonGuiDataCV`.
+pub mod jon_gui_data_cv {
+    /// Autofocus sweep state
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
+    #[repr(i32)]
+    pub enum AutofocusState {
+        Unspecified = 0,
+        Idle = 1,
+        CoarseSweep = 2,
+        FineSweep = 3,
+        Converged = 4,
+        Failed = 5,
+    }
+    impl AutofocusState {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "AUTOFOCUS_STATE_UNSPECIFIED",
+                Self::Idle => "AUTOFOCUS_STATE_IDLE",
+                Self::CoarseSweep => "AUTOFOCUS_STATE_COARSE_SWEEP",
+                Self::FineSweep => "AUTOFOCUS_STATE_FINE_SWEEP",
+                Self::Converged => "AUTOFOCUS_STATE_CONVERGED",
+                Self::Failed => "AUTOFOCUS_STATE_FAILED",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "AUTOFOCUS_STATE_UNSPECIFIED" => Some(Self::Unspecified),
+                "AUTOFOCUS_STATE_IDLE" => Some(Self::Idle),
+                "AUTOFOCUS_STATE_COARSE_SWEEP" => Some(Self::CoarseSweep),
+                "AUTOFOCUS_STATE_FINE_SWEEP" => Some(Self::FineSweep),
+                "AUTOFOCUS_STATE_CONVERGED" => Some(Self::Converged),
+                "AUTOFOCUS_STATE_FAILED" => Some(Self::Failed),
+                _ => None,
+            }
+        }
+    }
+}
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataRotary {
     #[prost(double, tag = "1")]
@@ -1431,4 +1518,6 @@ pub struct JonGuiState {
     pub actual_space_time: ::core::option::Option<JonGuiDataActualSpaceTime>,
     #[prost(message, optional, tag = "26")]
     pub power: ::core::option::Option<JonGuiDataPower>,
+    #[prost(message, optional, tag = "27")]
+    pub cv: ::core::option::Option<JonGuiDataCv>,
 }
