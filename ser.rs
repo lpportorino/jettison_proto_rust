@@ -967,6 +967,15 @@ pub struct JonGuiDataCv {
     pub roi_x2: f64,
     #[prost(double, tag = "23")]
     pub roi_y2: f64,
+    /// CV Bridge status
+    #[prost(enumeration = "jon_gui_data_cv::CvBridgeStatus", tag = "30")]
+    pub bridge_status: i32,
+    #[prost(enumeration = "jon_gui_data_cv::CvBridgeExitReason", tag = "31")]
+    pub last_exit_reason: i32,
+    #[prost(int64, tag = "32")]
+    pub bridge_uptime_ms: i64,
+    #[prost(int32, tag = "33")]
+    pub restart_count: i32,
 }
 /// Nested message and enum types in `JonGuiDataCV`.
 pub mod jon_gui_data_cv {
@@ -1015,6 +1024,130 @@ pub mod jon_gui_data_cv {
                 "AUTOFOCUS_STATE_FINE_SWEEP" => Some(Self::FineSweep),
                 "AUTOFOCUS_STATE_CONVERGED" => Some(Self::Converged),
                 "AUTOFOCUS_STATE_FAILED" => Some(Self::Failed),
+                _ => None,
+            }
+        }
+    }
+    /// CV Bridge container status
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
+    #[repr(i32)]
+    pub enum CvBridgeStatus {
+        Unspecified = 0,
+        /// Not running
+        Stopped = 1,
+        /// Container starting up
+        Starting = 2,
+        /// Healthy and processing
+        Running = 3,
+        /// Graceful shutdown in progress
+        Stopping = 4,
+        /// Exited unexpectedly
+        Crashed = 5,
+        /// Auto-restart in progress
+        Restarting = 6,
+    }
+    impl CvBridgeStatus {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "CV_BRIDGE_STATUS_UNSPECIFIED",
+                Self::Stopped => "CV_BRIDGE_STATUS_STOPPED",
+                Self::Starting => "CV_BRIDGE_STATUS_STARTING",
+                Self::Running => "CV_BRIDGE_STATUS_RUNNING",
+                Self::Stopping => "CV_BRIDGE_STATUS_STOPPING",
+                Self::Crashed => "CV_BRIDGE_STATUS_CRASHED",
+                Self::Restarting => "CV_BRIDGE_STATUS_RESTARTING",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "CV_BRIDGE_STATUS_UNSPECIFIED" => Some(Self::Unspecified),
+                "CV_BRIDGE_STATUS_STOPPED" => Some(Self::Stopped),
+                "CV_BRIDGE_STATUS_STARTING" => Some(Self::Starting),
+                "CV_BRIDGE_STATUS_RUNNING" => Some(Self::Running),
+                "CV_BRIDGE_STATUS_STOPPING" => Some(Self::Stopping),
+                "CV_BRIDGE_STATUS_CRASHED" => Some(Self::Crashed),
+                "CV_BRIDGE_STATUS_RESTARTING" => Some(Self::Restarting),
+                _ => None,
+            }
+        }
+    }
+    /// CV Bridge exit/termination reason
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
+    #[repr(i32)]
+    pub enum CvBridgeExitReason {
+        Unspecified = 0,
+        /// Never started since boot
+        NotStarted = 1,
+        /// Clean shutdown
+        Normal = 2,
+        /// Internal error
+        Error = 3,
+        /// CUDA/GPU failure
+        CudaError = 4,
+        /// IPC connection lost
+        IpcError = 5,
+        /// Out of memory
+        Oom = 6,
+        /// Watchdog timeout
+        Timeout = 7,
+        /// Killed by signal
+        Signal = 8,
+    }
+    impl CvBridgeExitReason {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "CV_BRIDGE_EXIT_REASON_UNSPECIFIED",
+                Self::NotStarted => "CV_BRIDGE_EXIT_REASON_NOT_STARTED",
+                Self::Normal => "CV_BRIDGE_EXIT_REASON_NORMAL",
+                Self::Error => "CV_BRIDGE_EXIT_REASON_ERROR",
+                Self::CudaError => "CV_BRIDGE_EXIT_REASON_CUDA_ERROR",
+                Self::IpcError => "CV_BRIDGE_EXIT_REASON_IPC_ERROR",
+                Self::Oom => "CV_BRIDGE_EXIT_REASON_OOM",
+                Self::Timeout => "CV_BRIDGE_EXIT_REASON_TIMEOUT",
+                Self::Signal => "CV_BRIDGE_EXIT_REASON_SIGNAL",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "CV_BRIDGE_EXIT_REASON_UNSPECIFIED" => Some(Self::Unspecified),
+                "CV_BRIDGE_EXIT_REASON_NOT_STARTED" => Some(Self::NotStarted),
+                "CV_BRIDGE_EXIT_REASON_NORMAL" => Some(Self::Normal),
+                "CV_BRIDGE_EXIT_REASON_ERROR" => Some(Self::Error),
+                "CV_BRIDGE_EXIT_REASON_CUDA_ERROR" => Some(Self::CudaError),
+                "CV_BRIDGE_EXIT_REASON_IPC_ERROR" => Some(Self::IpcError),
+                "CV_BRIDGE_EXIT_REASON_OOM" => Some(Self::Oom),
+                "CV_BRIDGE_EXIT_REASON_TIMEOUT" => Some(Self::Timeout),
+                "CV_BRIDGE_EXIT_REASON_SIGNAL" => Some(Self::Signal),
                 _ => None,
             }
         }
