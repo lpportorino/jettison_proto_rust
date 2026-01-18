@@ -1173,6 +1173,9 @@ pub struct JonGuiDataPower {
     pub ext_bat_capacity: i32,
     #[prost(enumeration = "JonGuiDataExtBatStatus", tag = "11")]
     pub ext_bat_status: i32,
+    /// Internal meteo sensor data (temperature, humidity, pressure)
+    #[prost(message, optional, tag = "12")]
+    pub meteo: ::core::option::Option<JonGuiDataMeteo>,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataLrf {
@@ -1196,6 +1199,9 @@ pub struct JonGuiDataLrf {
     pub is_started: bool,
     #[prost(message, optional, tag = "10")]
     pub meteo: ::core::option::Option<JonGuiDataMeteo>,
+    /// Scanning mode frequency (0=off, 1=1Hz, 2=2Hz, 3=4Hz)
+    #[prost(int32, tag = "11")]
+    pub scan_mode: i32,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataTarget {
