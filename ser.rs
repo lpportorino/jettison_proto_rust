@@ -954,6 +954,9 @@ pub struct JonGuiDataPmu {
     pub ina_power: f64,
     #[prost(bool, tag = "10")]
     pub ina_power_fault: bool,
+    /// Battery charging status (false = charging enabled by default)
+    #[prost(bool, tag = "11")]
+    pub charge_disabled: bool,
 }
 /// CV Gateway state enrichment - autofocus metrics and sweep status
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
