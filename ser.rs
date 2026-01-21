@@ -945,6 +945,15 @@ pub struct JonGuiDataPmu {
     pub voltage: f64,
     #[prost(bool, tag = "6")]
     pub heater_power_state: bool,
+    /// INA236 power monitor
+    #[prost(double, tag = "7")]
+    pub ina_voltage: f64,
+    #[prost(double, tag = "8")]
+    pub ina_current: f64,
+    #[prost(double, tag = "9")]
+    pub ina_power: f64,
+    #[prost(bool, tag = "10")]
+    pub ina_power_fault: bool,
 }
 /// CV Gateway state enrichment - autofocus metrics and sweep status
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
