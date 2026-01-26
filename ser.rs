@@ -1510,6 +1510,30 @@ pub struct RgbColor {
     #[prost(uint32, tag = "3")]
     pub blue: u32,
 }
+/// HeaterChannelStatus represents the state of a single heating channel
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct JonGuiDataHeaterChannelStatus {
+    #[prost(float, tag = "1")]
+    pub temperature: f32,
+    #[prost(float, tag = "2")]
+    pub applied_voltage_v: f32,
+    #[prost(float, tag = "3")]
+    pub target_voltage_v: f32,
+    #[prost(bool, tag = "4")]
+    pub enabled: bool,
+}
+/// JonGuiDataHeater contains the complete heater subsystem status
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct JonGuiDataHeater {
+    #[prost(float, tag = "1")]
+    pub bus_voltage_v: f32,
+    #[prost(float, tag = "2")]
+    pub current_a: f32,
+    #[prost(float, tag = "3")]
+    pub power_w: f32,
+    #[prost(message, repeated, tag = "4")]
+    pub channels: ::prost::alloc::vec::Vec<JonGuiDataHeaterChannelStatus>,
+}
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataActualSpaceTime {
     #[prost(double, tag = "1")]
@@ -1680,4 +1704,6 @@ pub struct JonGuiState {
     pub cv: ::core::option::Option<JonGuiDataCv>,
     #[prost(message, optional, tag = "28")]
     pub pmu: ::core::option::Option<JonGuiDataPmu>,
+    #[prost(message, optional, tag = "29")]
+    pub heater: ::core::option::Option<JonGuiDataHeater>,
 }
