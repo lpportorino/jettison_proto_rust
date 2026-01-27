@@ -1523,7 +1523,7 @@ pub struct JonGuiDataHeaterChannelStatus {
     pub enabled: bool,
 }
 /// JonGuiDataHeater contains the complete heater subsystem status
-#[derive(Clone, PartialEq, ::prost::Message)]
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataHeater {
     #[prost(float, tag = "1")]
     pub bus_voltage_v: f32,
@@ -1531,8 +1531,12 @@ pub struct JonGuiDataHeater {
     pub current_a: f32,
     #[prost(float, tag = "3")]
     pub power_w: f32,
-    #[prost(message, repeated, tag = "4")]
-    pub channels: ::prost::alloc::vec::Vec<JonGuiDataHeaterChannelStatus>,
+    #[prost(message, optional, tag = "4")]
+    pub channel_0: ::core::option::Option<JonGuiDataHeaterChannelStatus>,
+    #[prost(message, optional, tag = "5")]
+    pub channel_1: ::core::option::Option<JonGuiDataHeaterChannelStatus>,
+    #[prost(message, optional, tag = "6")]
+    pub channel_2: ::core::option::Option<JonGuiDataHeaterChannelStatus>,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataActualSpaceTime {
