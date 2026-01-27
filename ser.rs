@@ -35,6 +35,148 @@ pub struct JonOpaquePayload {
     #[prost(bytes = "vec", tag = "3")]
     pub payload: ::prost::alloc::vec::Vec<u8>,
 }
+/// Region of Interest for camera operations (focus, track, zoom, fx).
+/// Coordinates are normalized: -1.0 (left/top) to 1.0 (right/bottom).
+/// Center is (0, 0).
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct JonGuiDataRoi {
+    #[prost(double, tag = "1")]
+    pub x1: f64,
+    #[prost(double, tag = "2")]
+    pub y1: f64,
+    #[prost(double, tag = "3")]
+    pub x2: f64,
+    #[prost(double, tag = "4")]
+    pub y2: f64,
+}
+/// Image sharpness metrics with temporal derivatives.
+/// All values normalized 0.0-1.0 where 1.0 is maximum sharpness.
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct JonGuiDataSharpness {
+    #[prost(double, tag = "1")]
+    pub value: f64,
+    /// First derivative (rate of change)
+    #[prost(double, tag = "2")]
+    pub derivative_1: f64,
+    /// Second derivative (acceleration)
+    #[prost(double, tag = "3")]
+    pub derivative_2: f64,
+}
+/// 3D vector (position or velocity)
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct JonGuiDataVector3 {
+    #[prost(double, tag = "1")]
+    pub x: f64,
+    #[prost(double, tag = "2")]
+    pub y: f64,
+    #[prost(double, tag = "3")]
+    pub z: f64,
+}
+/// Unit quaternion for 3D rotation (w + xi + yj + zk)
+/// Must be normalized: w² + x² + y² + z² = 1
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct JonGuiDataQuaternion {
+    /// scalar (cos(θ/2))
+    #[prost(double, tag = "1")]
+    pub w: f64,
+    /// vector i
+    #[prost(double, tag = "2")]
+    pub x: f64,
+    /// vector j
+    #[prost(double, tag = "3")]
+    pub y: f64,
+    /// vector k
+    #[prost(double, tag = "4")]
+    pub z: f64,
+}
+/// 3D rigid body transform with velocity.
+/// When present, all fields are required.
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct JonGuiDataTransform3D {
+    /// meters
+    #[prost(message, optional, tag = "1")]
+    pub position: ::core::option::Option<JonGuiDataVector3>,
+    /// unit quaternion
+    #[prost(message, optional, tag = "2")]
+    pub orientation: ::core::option::Option<JonGuiDataQuaternion>,
+    /// m/s
+    #[prost(message, optional, tag = "3")]
+    pub linear_velocity: ::core::option::Option<JonGuiDataVector3>,
+    /// rad/s
+    #[prost(message, optional, tag = "4")]
+    pub angular_velocity: ::core::option::Option<JonGuiDataVector3>,
+}
+/// Tracked object - all fields required.
+/// If object is in the list, we have complete tracking data for it.
+/// UUID allows joining with external data sources (labels, classifications, etc.)
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct JonGuiDataTrackedObject {
+    /// UUIDv7 identifier - stable across frames for the same object
+    #[prost(string, tag = "1")]
+    pub uuid: ::prost::alloc::string::String,
+    /// 3D pose (position, orientation, velocities)
+    #[prost(message, optional, tag = "2")]
+    pub transform: ::core::option::Option<JonGuiDataTransform3D>,
+    /// 2D bounding box in image space (NDC coords -1 to 1)
+    #[prost(message, optional, tag = "3")]
+    pub bounding_box: ::core::option::Option<JonGuiDataRoi>,
+    /// Current tracking state
+    #[prost(enumeration = "jon_gui_data_tracked_object::TrackingState", tag = "4")]
+    pub state: i32,
+}
+/// Nested message and enum types in `JonGuiDataTrackedObject`.
+pub mod jon_gui_data_tracked_object {
+    /// Tracking state
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
+    #[repr(i32)]
+    pub enum TrackingState {
+        Unspecified = 0,
+        /// Initial lock attempt
+        Acquiring = 1,
+        /// Actively tracking
+        Tracking = 2,
+        /// Temporarily lost, using prediction
+        Predicted = 3,
+        /// Lost track
+        Lost = 4,
+    }
+    impl TrackingState {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unspecified => "TRACKING_STATE_UNSPECIFIED",
+                Self::Acquiring => "TRACKING_STATE_ACQUIRING",
+                Self::Tracking => "TRACKING_STATE_TRACKING",
+                Self::Predicted => "TRACKING_STATE_PREDICTED",
+                Self::Lost => "TRACKING_STATE_LOST",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "TRACKING_STATE_UNSPECIFIED" => Some(Self::Unspecified),
+                "TRACKING_STATE_ACQUIRING" => Some(Self::Acquiring),
+                "TRACKING_STATE_TRACKING" => Some(Self::Tracking),
+                "TRACKING_STATE_PREDICTED" => Some(Self::Predicted),
+                "TRACKING_STATE_LOST" => Some(Self::Lost),
+                _ => None,
+            }
+        }
+    }
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum JonGuiDataVideoChannelHeatFilters {
@@ -959,7 +1101,7 @@ pub struct JonGuiDataPmu {
     pub charge_disabled: bool,
 }
 /// CV Gateway state enrichment - autofocus metrics and sweep status
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct JonGuiDataCv {
     /// Day channel autofocus
     #[prost(enumeration = "jon_gui_data_cv::AutofocusState", tag = "1")]
@@ -1001,6 +1143,40 @@ pub struct JonGuiDataCv {
     pub bridge_uptime_ms: i64,
     #[prost(int32, tag = "33")]
     pub restart_count: i32,
+    /// Day channel ROIs
+    #[prost(message, optional, tag = "40")]
+    pub roi_focus_day: ::core::option::Option<JonGuiDataRoi>,
+    #[prost(message, optional, tag = "41")]
+    pub roi_track_day: ::core::option::Option<JonGuiDataRoi>,
+    #[prost(message, optional, tag = "42")]
+    pub roi_zoom_day: ::core::option::Option<JonGuiDataRoi>,
+    #[prost(message, optional, tag = "43")]
+    pub roi_fx_day: ::core::option::Option<JonGuiDataRoi>,
+    /// Heat channel ROIs
+    #[prost(message, optional, tag = "50")]
+    pub roi_focus_heat: ::core::option::Option<JonGuiDataRoi>,
+    #[prost(message, optional, tag = "51")]
+    pub roi_track_heat: ::core::option::Option<JonGuiDataRoi>,
+    #[prost(message, optional, tag = "52")]
+    pub roi_zoom_heat: ::core::option::Option<JonGuiDataRoi>,
+    #[prost(message, optional, tag = "53")]
+    pub roi_fx_heat: ::core::option::Option<JonGuiDataRoi>,
+    /// Day channel sharpness (within roi_focus_day)
+    #[prost(message, optional, tag = "60")]
+    pub sharpness_metrics_day: ::core::option::Option<JonGuiDataSharpness>,
+    /// Heat channel sharpness (within roi_focus_heat)
+    #[prost(message, optional, tag = "61")]
+    pub sharpness_metrics_heat: ::core::option::Option<JonGuiDataSharpness>,
+    /// Day camera 3D pose and velocity
+    #[prost(message, optional, tag = "70")]
+    pub camera_transform_day: ::core::option::Option<JonGuiDataTransform3D>,
+    /// Heat camera 3D pose and velocity
+    #[prost(message, optional, tag = "71")]
+    pub camera_transform_heat: ::core::option::Option<JonGuiDataTransform3D>,
+    /// Tracked objects (0 or more). Each object has UUID for joining with
+    /// external data sources (labels, classifications, etc.)
+    #[prost(message, repeated, tag = "80")]
+    pub tracked_objects: ::prost::alloc::vec::Vec<JonGuiDataTrackedObject>,
 }
 /// Nested message and enum types in `JonGuiDataCV`.
 pub mod jon_gui_data_cv {
@@ -1622,6 +1798,11 @@ pub struct JonGuiDataCameraDay {
     pub is_started: bool,
     #[prost(message, optional, tag = "16")]
     pub meteo: ::core::option::Option<JonGuiDataMeteo>,
+    /// Sensor parameters (normalized 0.0-1.0, set by camera or CV)
+    #[prost(double, optional, tag = "17")]
+    pub sensor_gain: ::core::option::Option<f64>,
+    #[prost(double, optional, tag = "18")]
+    pub exposure: ::core::option::Option<f64>,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataDayCamGlassHeater {
