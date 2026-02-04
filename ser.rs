@@ -1399,6 +1399,9 @@ pub struct JonGuiDataRotary {
     pub pan_init_status: i32,
     #[prost(int32, tag = "21")]
     pub tilt_init_status: i32,
+    /// CLOCK_MONOTONIC timestamp (microseconds) when state was last pushed to SHM
+    #[prost(uint64, tag = "22")]
+    pub capture_monotonic_us: u64,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct ScanNode {
@@ -1763,6 +1766,9 @@ pub struct JonGuiDataCameraHeat {
     pub is_started: bool,
     #[prost(message, optional, tag = "15")]
     pub meteo: ::core::option::Option<JonGuiDataMeteo>,
+    /// CLOCK_MONOTONIC timestamp (microseconds) when state was last pushed to SHM
+    #[prost(uint64, tag = "16")]
+    pub capture_monotonic_us: u64,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataCameraDay {
@@ -1803,6 +1809,9 @@ pub struct JonGuiDataCameraDay {
     pub sensor_gain: ::core::option::Option<f64>,
     #[prost(double, optional, tag = "18")]
     pub exposure: ::core::option::Option<f64>,
+    /// CLOCK_MONOTONIC timestamp (microseconds) when state was last pushed to SHM
+    #[prost(uint64, tag = "19")]
+    pub capture_monotonic_us: u64,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataDayCamGlassHeater {
