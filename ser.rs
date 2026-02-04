@@ -1716,6 +1716,8 @@ pub struct JonGuiDataHeater {
     pub channel_1: ::core::option::Option<JonGuiDataHeaterChannelStatus>,
     #[prost(message, optional, tag = "6")]
     pub channel_2: ::core::option::Option<JonGuiDataHeaterChannelStatus>,
+    #[prost(bool, tag = "7")]
+    pub automatic_control_enabled: bool,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataActualSpaceTime {
