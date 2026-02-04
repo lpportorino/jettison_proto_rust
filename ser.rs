@@ -1814,17 +1814,6 @@ pub struct JonGuiDataCameraDay {
     pub capture_monotonic_us: u64,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct JonGuiDataDayCamGlassHeater {
-    #[prost(double, tag = "1")]
-    pub temperature: f64,
-    #[prost(bool, tag = "2")]
-    pub status: bool,
-    #[prost(bool, tag = "3")]
-    pub is_started: bool,
-    #[prost(message, optional, tag = "4")]
-    pub meteo: ::core::option::Option<JonGuiDataMeteo>,
-}
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataRecOsd {
     #[prost(enumeration = "JonGuiDataRecOsdScreen", tag = "1")]
     pub screen: i32,
@@ -1888,8 +1877,6 @@ pub struct JonGuiState {
     pub compass_calibration: ::core::option::Option<JonGuiDataCompassCalibration>,
     #[prost(message, optional, tag = "23")]
     pub rec_osd: ::core::option::Option<JonGuiDataRecOsd>,
-    #[prost(message, optional, tag = "24")]
-    pub day_cam_glass_heater: ::core::option::Option<JonGuiDataDayCamGlassHeater>,
     #[prost(message, optional, tag = "25")]
     pub actual_space_time: ::core::option::Option<JonGuiDataActualSpaceTime>,
     #[prost(message, optional, tag = "26")]
