@@ -58,20 +58,12 @@ pub struct EnableAutomaticControl {}
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct DisableAutomaticControl {}
 /// AutomaticControlChannelParams contains automatic regulation parameters for a single heater channel
+/// Note: PID gains (kp, ki, kd) are loaded from Redis config_editor, not sent via command
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct AutomaticControlChannelParams {
-    /// Target temperature in Celsius
+    /// Target temperature in Celsius (persisted via manifold state storage)
     #[prost(float, tag = "1")]
     pub target_temperature: f32,
-    /// Proportional gain
-    #[prost(float, tag = "2")]
-    pub kp: f32,
-    /// Integral gain
-    #[prost(float, tag = "3")]
-    pub ki: f32,
-    /// Derivative gain
-    #[prost(float, tag = "4")]
-    pub kd: f32,
 }
 /// SetAutomaticControlParams configures automatic regulation parameters for all channels
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]

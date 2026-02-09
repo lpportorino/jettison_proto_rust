@@ -20,14 +20,24 @@ pub struct JonGuiDataHeater {
     pub current_a: f32,
     #[prost(float, tag = "3")]
     pub power_w: f32,
+    /// Day camera glass (60W)
     #[prost(message, optional, tag = "4")]
     pub channel_0: ::core::option::Option<JonGuiDataHeaterChannelStatus>,
+    /// LRF glass (15W)
     #[prost(message, optional, tag = "5")]
     pub channel_1: ::core::option::Option<JonGuiDataHeaterChannelStatus>,
+    /// Heat camera glass (60W)
     #[prost(message, optional, tag = "6")]
     pub channel_2: ::core::option::Option<JonGuiDataHeaterChannelStatus>,
     #[prost(bool, tag = "7")]
     pub automatic_control_enabled: bool,
+    /// Target temperatures for PID control (persisted via state storage)
+    #[prost(float, tag = "8")]
+    pub target_temp_channel_0: f32,
+    #[prost(float, tag = "9")]
+    pub target_temp_channel_1: f32,
+    #[prost(float, tag = "10")]
+    pub target_temp_channel_2: f32,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct JonGuiDataMeteo {
