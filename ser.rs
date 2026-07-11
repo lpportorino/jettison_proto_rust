@@ -647,6 +647,39 @@ impl JonGuiDatatLrfLaserPointerModes {
         }
     }
 }
+/// Discriminates what a capture event (target_id increment) IS: a ranged
+/// TARGET (LRF returned a valid range) or a PHOTO (operator Photo command,
+/// or an LRF measure that missed — no valid range). UNSPECIFIED appears only
+/// in records that predate the discriminator.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum JonGuiDataTargetType {
+    Unspecified = 0,
+    Target = 1,
+    Photo = 2,
+}
+impl JonGuiDataTargetType {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "JON_GUI_DATA_TARGET_TYPE_UNSPECIFIED",
+            Self::Target => "JON_GUI_DATA_TARGET_TYPE_TARGET",
+            Self::Photo => "JON_GUI_DATA_TARGET_TYPE_PHOTO",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "JON_GUI_DATA_TARGET_TYPE_UNSPECIFIED" => Some(Self::Unspecified),
+            "JON_GUI_DATA_TARGET_TYPE_TARGET" => Some(Self::Target),
+            "JON_GUI_DATA_TARGET_TYPE_PHOTO" => Some(Self::Photo),
+            _ => None,
+        }
+    }
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum JonGuiDataCompassCalibrateStatus {
@@ -2363,8 +2396,6 @@ pub struct JonGuiDataTarget {
     pub target_id: i32,
     #[prost(message, optional, tag = "16")]
     pub target_color: ::core::option::Option<RgbColor>,
-    #[prost(uint32, tag = "17")]
-    pub r#type: u32,
     /// UUID as four fixed32 values (128 bits total)
     #[prost(int32, tag = "18")]
     pub uuid_part1: i32,
@@ -2374,6 +2405,11 @@ pub struct JonGuiDataTarget {
     pub uuid_part3: i32,
     #[prost(int32, tag = "21")]
     pub uuid_part4: i32,
+    /// What this capture event IS: a ranged TARGET or a PHOTO (operator Photo
+    /// command, or an LRF measure with no valid range). UNSPECIFIED only in
+    /// records predating the discriminator.
+    #[prost(enumeration = "JonGuiDataTargetType", tag = "23")]
+    pub capture_type: i32,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct RgbColor {
