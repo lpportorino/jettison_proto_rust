@@ -134,6 +134,24 @@ pub struct WidgetNode {
     /// (subject + ref_value + compare).
     #[prost(message, optional, tag = "42")]
     pub checked_when: ::core::option::Option<VisibilityBinding>,
+    /// Reactive ENABLED-state binding — the reactive sibling of `checked_when`,
+    /// inverted in polarity: the widget carries LV_STATE_DISABLED while the
+    /// comparison against the subject does NOT hold, and is cleared (enabled)
+    /// while it holds. Reuses the VisibilityBinding shape (subject + ref_value +
+    /// compare); EQ/NOT_EQ use the native lv_obj_bind_state_if_* helpers, the
+    /// range ops a custom observer (the checked_when / visibility precedent).
+    /// Drives reactive precondition-disable — a control greyed until its
+    /// preconditions read satisfied.
+    #[prost(message, optional, tag = "45")]
+    pub enabled_when: ::core::option::Option<VisibilityBinding>,
+    /// Reactive TEXT-COLOR binding — the widget's LV_PART_MAIN text color is set
+    /// to `color_when.color` while the comparison holds, and reverted to the
+    /// theme/authored default when it does not. Unlike the three state bindings
+    /// above, LVGL has no native bind helper for a style property, so ALL compare
+    /// ops use a custom observer. Drives reactive fault-coloring — a readout that
+    /// recolors while its value is out of range.
+    #[prost(message, optional, tag = "46")]
+    pub color_when: ::core::option::Option<ColorBinding>,
     /// Stable node identity for tree patching: FNV-1a-32 of the node's
     /// root→node identity path (author :id segments, else type#ordinal among
     /// unkeyed same-type siblings), assigned + collision-checked by codegen.
@@ -652,7 +670,8 @@ pub struct CmdSpec {
     /// fixed-width slot, leaf written at a SENTINEL the gen-time patch located).
     #[prost(bytes = "vec", tag = "2")]
     pub root_template: ::prost::alloc::vec::Vec<u8>,
-    /// the slot(s) to overwrite at runtime (up to 2 — an NDC x/y pair).
+    /// the slot(s) to overwrite at runtime (up to 4 — an NDC x/y pair, plus the
+    /// ROI rubber-band's 2nd-corner x2/y2 pair).
     #[prost(message, repeated, tag = "3")]
     pub patches: ::prost::alloc::vec::Vec<FieldPatch>,
 }
@@ -678,6 +697,21 @@ pub struct VisibilityBinding {
     /// comparison operator (default: EQ)
     #[prost(enumeration = "CompareOp", tag = "3")]
     pub compare: i32,
+}
+/// Value-conditional text-color binding — the VisibilityBinding subject/range
+/// shape PLUS the color applied while the condition holds
+/// (WidgetNode.color_when). The one reactive binding LVGL cannot express with a
+/// native bind helper (there is none for a style property), so the renderer
+/// drives it with a custom observer for every compare op.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ColorBinding {
+    /// subject + ref_value + compare — reuses the VisibilityBinding shape
+    #[prost(message, optional, tag = "1")]
+    pub when: ::core::option::Option<VisibilityBinding>,
+    /// text color applied to LV_PART_MAIN while `when` holds; the theme/authored
+    /// default is restored when it does not
+    #[prost(message, optional, tag = "2")]
+    pub color: ::core::option::Option<Color>,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct Layout {
@@ -1004,6 +1038,10 @@ pub enum PatchKind {
     Delta = 3,
     /// widget int value → a padded-varint int slot
     WidgetValue = 4,
+    /// ROI rubber-band 2nd-corner NDC x → a double slot (verbatim)
+    NdcX2 = 5,
+    /// ROI rubber-band 2nd-corner NDC y → a double slot (verbatim)
+    NdcY2 = 6,
 }
 impl PatchKind {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -1017,6 +1055,8 @@ impl PatchKind {
             Self::NdcY => "PATCH_KIND_NDC_Y",
             Self::Delta => "PATCH_KIND_DELTA",
             Self::WidgetValue => "PATCH_KIND_WIDGET_VALUE",
+            Self::NdcX2 => "PATCH_KIND_NDC_X2",
+            Self::NdcY2 => "PATCH_KIND_NDC_Y2",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -1027,6 +1067,8 @@ impl PatchKind {
             "PATCH_KIND_NDC_Y" => Some(Self::NdcY),
             "PATCH_KIND_DELTA" => Some(Self::Delta),
             "PATCH_KIND_WIDGET_VALUE" => Some(Self::WidgetValue),
+            "PATCH_KIND_NDC_X2" => Some(Self::NdcX2),
+            "PATCH_KIND_NDC_Y2" => Some(Self::NdcY2),
             _ => None,
         }
     }
@@ -1048,6 +1090,12 @@ pub enum GestureKind {
     Pinch = 4,
     /// web-only; no device analogue (no template)
     Wheel = 5,
+    /// ROI rubber-band rectangle: a mode-gated REINTERPRETATION of a completed
+    /// pan (PAN_END) whose down+up corners become one 4-NDC command
+    /// (cmd.{Day,Heat}Camera.{Focus,Track,Zoom,Fx}ROI). This kind is a REGISTRY
+    /// LOOKUP KEY only — an ROI-mode GestureSpec registers under it; the FSM
+    /// never emits it as a gesture_decision_t.kind on the wire.
+    Roi = 6,
 }
 impl GestureKind {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -1062,6 +1110,7 @@ impl GestureKind {
             Self::Track => "GESTURE_KIND_TRACK",
             Self::Pinch => "GESTURE_KIND_PINCH",
             Self::Wheel => "GESTURE_KIND_WHEEL",
+            Self::Roi => "GESTURE_KIND_ROI",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -1073,6 +1122,7 @@ impl GestureKind {
             "GESTURE_KIND_TRACK" => Some(Self::Track),
             "GESTURE_KIND_PINCH" => Some(Self::Pinch),
             "GESTURE_KIND_WHEEL" => Some(Self::Wheel),
+            "GESTURE_KIND_ROI" => Some(Self::Roi),
             _ => None,
         }
     }
