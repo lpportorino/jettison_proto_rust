@@ -152,6 +152,31 @@ pub struct WidgetNode {
     /// recolors while its value is out of range.
     #[prost(message, optional, tag = "46")]
     pub color_when: ::core::option::Option<ColorBinding>,
+    /// Touch affordance: grow this node's HIT box beyond its drawn box by this
+    /// many design pixels, on all four sides (lv_obj_set_ext_click_area, which
+    /// is one value per object — LVGL has no per-side form, so neither does
+    /// this). DPI-scaled through LV_DPX, so 24 here is 24px at DPI 160 and 48
+    /// at 320; 0 (the default) is exactly 0 at every DPI and means the hit box
+    /// IS the drawn box.
+    ///
+    /// This is an lv_obj_t FIELD, not a style property, which is why it sits on
+    /// the node rather than in a StyleGroup — it cannot be varied per state and
+    /// it does not cascade.
+    ///
+    /// AUTHORING DUTY, and it is the whole reason this is explicit rather than
+    /// a per-widget-class default. The slop is INVISIBLE to layout: a flex or
+    /// grid parent reserves space by the DRAWN box, so slop bleeds into
+    /// whatever sits next to this node, and lv_indev_search_obj returns the
+    /// FIRST hit walking children in REVERSE — so in the overlapped band one
+    /// sibling silently takes every press and the other is dead there, with no
+    /// pixel and no event to show for it. Reserve the space you claim: keep at
+    /// least this many clear pixels to every interactive sibling, or wrap the
+    /// node in a transparent container that owns the margin. Prefer growing the
+    /// CONTROL where the design allows it, because that growth is the kind a
+    /// layout can see. renderer/src/renderer.h carries the full contract and
+    /// docs/UI-QUALITY-CONTRACTS.md §2.5 the sibling-gap arithmetic.
+    #[prost(uint32, tag = "47")]
+    pub hit_slop: u32,
     /// Stable node identity for tree patching: FNV-1a-32 of the node's
     /// root→node identity path (author :id segments, else type#ordinal among
     /// unkeyed same-type siblings), assigned + collision-checked by codegen.
@@ -277,16 +302,20 @@ pub struct SliderProps {
     pub value: i32,
     #[prost(enumeration = "BarMode", tag = "4")]
     pub mode: i32,
-    /// Scrubber contract — one prop, two coupled renderer behaviors. When set,
-    /// the slider (a) seeks immediately on press: LV_EVENT_PRESSED maps the
-    /// pressed point to a value with the stock update_knob_pos math (stock LVGL
-    /// seeks a stationary track tap only at RELEASE), and (b) widens the ext
-    /// click area to LV_DPX(24) — the measured finger envelope; the stock ctor
-    /// sets LV_DPX(8). The widening rides this prop because the wire carries no
-    /// ext-click vocabulary; a slider without the prop keeps full stock
-    /// behavior (release-seek + the 8 px halo). BAR_MODE_RANGE never
-    /// press-seeks: which knob a press adjusts is the two-knob proximity
-    /// contract, and jumping a knob on DOWN would preempt it.
+    /// Seek immediately on press: LV_EVENT_PRESSED maps the pressed point to a
+    /// value with the stock update_knob_pos math. Stock LVGL seeks a stationary
+    /// track tap only at RELEASE, so this changes WHEN the value moves, and
+    /// nothing else. BAR_MODE_RANGE never press-seeks: which knob a press
+    /// adjusts is the two-knob proximity contract, and jumping a knob on DOWN
+    /// would preempt it.
+    ///
+    /// THIS PROP IS BEHAVIOUR ONLY. It used to also widen the ext click area to
+    /// LV_DPX(24), because the wire had nowhere else to put a touch affordance
+    /// — so a scrubber could not ask for the envelope without the seek, or the
+    /// seek without the envelope, and no other widget could ask for either.
+    /// WidgetNode.hit_slop now carries that, for every widget; a press-seek
+    /// slider that wants the envelope sets both, and its author owes hit_slop's
+    /// reserve-the-space duty.
     #[prost(bool, tag = "5")]
     pub seek_on_press: bool,
 }
@@ -644,20 +673,39 @@ pub struct EventBinding {
     pub cmd_by_value: ::prost::alloc::vec::Vec<CmdSpec>,
 }
 /// One fixed-width slot in a CmdSpec.root_template the renderer overwrites.
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FieldPatch {
     /// start of the slot in root_template
     #[prost(uint32, tag = "1")]
     pub byte_offset: u32,
-    /// slot width (8 for a double, 5/10 for a padded varint)
+    /// slot width (8 double, 4 float, 5/10 padded varint)
     #[prost(uint32, tag = "2")]
     pub byte_width: u32,
     #[prost(enumeration = "PatchKind", tag = "3")]
     pub kind: i32,
-    /// gen-time wire-scale (uigen.scales): the runtime value × scale is the
-    /// wire int for a varint leaf; 1 for a verbatim double (NDC).
+    /// gen-time fixed-point factor (uigen.scales), whose ONE definition is
+    /// `proto value × wire_scale = the ABI int` the LVGL widgets and subjects
+    /// ride. The float/double encodings therefore DIVIDE by it to recover the
+    /// proto value; the padded varint MULTIPLIES, because an integer leaf's ABI
+    /// int is already in the proto's own unit and its scale is 1. A wire_scale
+    /// ≤ 0 is refused rather than applied — it can only come from a malformed
+    /// producer, and both directions would silently corrupt the slot.
     #[prost(sint32, tag = "4")]
     pub wire_scale: i32,
+    /// The local subject whose current int this slot reads. REQUIRED when kind is
+    /// PATCH_KIND_SUBJECT_VALUE and MUST be empty for every other kind; the
+    /// renderer refuses both violations. Bounded at 63 like every other subject
+    /// reference (SubjectDeclaration.name, VisibilityBinding.subject,
+    /// EventBinding.set_subject), so a name legal to DECLARE is always legal to
+    /// reference here. A NAME rather than a registry index deliberately: the
+    /// renderer's registry order is a decode-time implementation detail that a
+    /// dropped or reordered declaration silently shifts, so an index would
+    /// resolve to the WRONG subject and send a plausible wrong value, while an
+    /// unresolvable name fails loud at load.
+    #[prost(string, tag = "5")]
+    pub subject: ::prost::alloc::string::String,
+    #[prost(enumeration = "PatchEncoding", tag = "6")]
+    pub encoding: i32,
 }
 /// A pre-encoded cmd.Root template + the slots the renderer overwrites.
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -670,8 +718,12 @@ pub struct CmdSpec {
     /// fixed-width slot, leaf written at a SENTINEL the gen-time patch located).
     #[prost(bytes = "vec", tag = "2")]
     pub root_template: ::prost::alloc::vec::Vec<u8>,
-    /// the slot(s) to overwrite at runtime (up to 4 — an NDC x/y pair, plus the
-    /// ROI rubber-band's 2nd-corner x2/y2 pair).
+    /// The slot(s) to overwrite at runtime. Bounded at 8 by the WIDEST command
+    /// this vocabulary must be able to send in one shot: the rotary scan-node
+    /// commands carry 7 operator-facing fields (an index, two zoom-table values,
+    /// azimuth, elevation, linger and speed), so a form for one needs 7 slots.
+    /// The gesture shapes that set the previous bound of 4 are unaffected — an
+    /// NDC x/y pair is 2 and an ROI rubber-band's two corners are 4.
     #[prost(message, repeated, tag = "3")]
     pub patches: ::prost::alloc::vec::Vec<FieldPatch>,
 }
@@ -1025,7 +1077,8 @@ impl EventTrigger {
         }
     }
 }
-/// Which gesture/value the patcher writes into a slot, and how to encode it.
+/// WHERE the patcher reads the value it writes into a slot. This is the SOURCE
+/// axis only; how the value is written is PatchEncoding below.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum PatchKind {
@@ -1034,14 +1087,20 @@ pub enum PatchKind {
     NdcX = 1,
     /// gesture NDC y → a double slot (verbatim, no recast)
     NdcY = 2,
-    /// pinch/wheel ±1 step → a padded-varint int slot
+    /// pinch/wheel ±1 step → an int slot
     Delta = 3,
-    /// widget int value → a padded-varint int slot
+    /// the emitting widget's int value → an int slot
     WidgetValue = 4,
     /// ROI rubber-band 2nd-corner NDC x → a double slot (verbatim)
     NdcX2 = 5,
     /// ROI rubber-band 2nd-corner NDC y → a double slot (verbatim)
     NdcY2 = 6,
+    /// The current int of the NAMED local subject in FieldPatch.subject. The one
+    /// source that is neither a pointer gesture nor the emitting widget's own
+    /// value, which is what lets a multi-field FORM be sent by a control that has
+    /// no value of its own: each slot names its own subject, so N slots carry N
+    /// independent values without the emit call gaining N arguments.
+    SubjectValue = 7,
 }
 impl PatchKind {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -1057,6 +1116,7 @@ impl PatchKind {
             Self::WidgetValue => "PATCH_KIND_WIDGET_VALUE",
             Self::NdcX2 => "PATCH_KIND_NDC_X2",
             Self::NdcY2 => "PATCH_KIND_NDC_Y2",
+            Self::SubjectValue => "PATCH_KIND_SUBJECT_VALUE",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -1069,6 +1129,53 @@ impl PatchKind {
             "PATCH_KIND_WIDGET_VALUE" => Some(Self::WidgetValue),
             "PATCH_KIND_NDC_X2" => Some(Self::NdcX2),
             "PATCH_KIND_NDC_Y2" => Some(Self::NdcY2),
+            "PATCH_KIND_SUBJECT_VALUE" => Some(Self::SubjectValue),
+            _ => None,
+        }
+    }
+}
+/// HOW the patcher writes a value-sourced slot. Separate from PatchKind because
+/// the two are genuinely orthogonal: ONE integer source targets three different
+/// wire shapes, so folding them into one enum needs a cross product that grows
+/// multiplicatively with every new source.
+///
+/// MEANINGFUL ONLY FOR THE VALUE-SOURCED KINDS — DELTA, WIDGET_VALUE and
+/// SUBJECT_VALUE, each of which must set a defined encoding. The four NDC kinds
+/// ARE 8-byte verbatim doubles by definition, so they carry UNSPECIFIED and the
+/// renderer REFUSES a set encoding on them: the fact lives in exactly one field
+/// rather than in two that can disagree.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum PatchEncoding {
+    /// the NDC kinds; refused on a value kind
+    Unspecified = 0,
+    /// Non-minimal padded varint of (value × wire_scale), byte_width bytes wide.
+    PaddedVarint = 1,
+    /// 8 little-endian IEEE-754 bytes of (value ÷ wire_scale). byte_width must be 8.
+    DoubleLe = 2,
+    /// 4 little-endian IEEE-754 bytes of (value ÷ wire_scale). byte_width must be 4.
+    FloatLe = 3,
+}
+impl PatchEncoding {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "PATCH_ENCODING_UNSPECIFIED",
+            Self::PaddedVarint => "PATCH_ENCODING_PADDED_VARINT",
+            Self::DoubleLe => "PATCH_ENCODING_DOUBLE_LE",
+            Self::FloatLe => "PATCH_ENCODING_FLOAT_LE",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "PATCH_ENCODING_UNSPECIFIED" => Some(Self::Unspecified),
+            "PATCH_ENCODING_PADDED_VARINT" => Some(Self::PaddedVarint),
+            "PATCH_ENCODING_DOUBLE_LE" => Some(Self::DoubleLe),
+            "PATCH_ENCODING_FLOAT_LE" => Some(Self::FloatLe),
             _ => None,
         }
     }
