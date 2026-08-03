@@ -195,7 +195,7 @@ pub struct WidgetNode {
     /// Typed widget-specific properties (one per widget type)
     #[prost(
         oneof = "widget_node::WidgetProps",
-        tags = "10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 38, 40, 41"
+        tags = "10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 38, 40, 41, 48"
     )]
     pub widget_props: ::core::option::Option<widget_node::WidgetProps>,
 }
@@ -248,6 +248,8 @@ pub mod widget_node {
         ChartProps(super::ChartProps),
         #[prost(message, tag = "41")]
         HostProxyProps(super::HostProxyProps),
+        #[prost(message, tag = "48")]
+        TargetOverlayProps(super::TargetOverlayProps),
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -616,6 +618,79 @@ pub struct HostProxyProps {
     #[prost(int32, tag = "8")]
     pub z: i32,
 }
+/// One rectangle drawn by a WIDGET_TARGET_OVERLAY node — a computer-vision
+/// detection or track, not an interactive control.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TargetBox {
+    /// Rect in DESIGN PIXELS, relative to the overlay's own content-box origin.
+    /// Same unit and same origin as WidgetNode.x/y, deliberately: a producer that
+    /// can place a node can place a box, and a per-mille or normalized rect would
+    /// be the only unit in this vocabulary that is not raw design px. Signed
+    /// because a detection at the frame edge is legitimately partly outside — the
+    /// overlay clips its children, so a box hanging off an edge draws its visible
+    /// part and nothing more.
+    #[prost(int32, tag = "1")]
+    pub x: i32,
+    #[prost(int32, tag = "2")]
+    pub y: i32,
+    #[prost(int32, tag = "3")]
+    pub w: i32,
+    #[prost(int32, tag = "4")]
+    pub h: i32,
+    /// Caption drawn inside the box's top-left corner. Empty = no caption. It
+    /// takes its text color and font from the OVERLAY node, so a PROP_TEXT_COLOR
+    /// or PROP_TEXT_FONT in the overlay's style_groups is a screen's one handle on
+    /// every caption — the boxes and captions are renderer-built and no StyleGroup
+    /// addresses them directly. The renderer carries those two values down
+    /// EXPLICITLY: LVGL's own style inheritance does not reach that far, because
+    /// the box object between overlay and caption re-resolves the theme's own text
+    /// color and inheritance stops at the first ancestor that resolves.
+    #[prost(string, tag = "5")]
+    pub label: ::prost::alloc::string::String,
+    /// Box stroke color. Absent = the theme's border color for the overlay's own
+    /// class, which is what makes an unstyled box theme-correct in both families
+    /// (the ChartSeries.color convention). When present it colors the caption
+    /// too, so one classification reads as one thing.
+    #[prost(message, optional, tag = "6")]
+    pub color: ::core::option::Option<Color>,
+}
+/// Target-overlay widget: a pointer-transparent box that draws N target
+/// rectangles over whatever it is stacked on (typically a host-proxy video
+/// plane). The boxes are DATA, not child WidgetNodes: they carry their own
+/// geometry, are never laid out by LVGL, and take no part in the pointer path —
+/// an overlay that absorbed presses would be a dead zone over the surface
+/// underneath it, which is the failure LV_STATE_DISABLED stacking already
+/// demonstrates elsewhere.
+///
+/// Live detections arrive as a ScreenPatch op against the overlay's uid; there
+/// is no per-box subject binding, because the box list is a structure and
+/// StateUpdate carries only ints and strings. The op is a
+/// PATCH_OP_REPLACE_NODE, never PATCH_OP_UPDATE_PROPS: the renderer appends one
+/// LVGL object per box, so the live subtree does not mirror the node's own
+/// children and re-applying these props in place would stack a second set of
+/// boxes over the first. That puts this widget in the same replace-only class
+/// as WIDGET_TABVIEW and WIDGET_HOST_PROXY, and the renderer refuses an
+/// UPDATE_PROPS naming it.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TargetOverlayProps {
+    /// The frame's boxes. FT_POINTER on the C side (ui_ast.options): the arm sits
+    /// in the widget_props union, which is on the recursive decode stack once per
+    /// tree level, so an inline array would tax every node of every screen for a
+    /// list only this widget carries.
+    #[prost(message, repeated, tag = "1")]
+    pub boxes: ::prost::alloc::vec::Vec<TargetBox>,
+    /// Box stroke width in design px; 0 = the renderer default. It is a prop
+    /// rather than a style property because the boxes are renderer-built children
+    /// that no StyleGroup can address — the same reason HostProxyProps carries
+    /// handle_size.
+    #[prost(uint32, tag = "2")]
+    pub border_width: u32,
+    /// Suppress every caption without clearing the labels. Polarity is chosen so
+    /// proto3's false default draws them: a producer that fills in boxes and
+    /// labels gets the captions it wrote without having to set a second flag.
+    #[prost(bool, tag = "3")]
+    pub hide_labels: bool,
+}
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct Point {
     #[prost(int32, tag = "1")]
@@ -945,6 +1020,7 @@ pub enum WidgetType {
     WidgetTabview = 19,
     WidgetChart = 20,
     WidgetHostProxy = 21,
+    WidgetTargetOverlay = 22,
 }
 impl WidgetType {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -975,6 +1051,7 @@ impl WidgetType {
             Self::WidgetTabview => "WIDGET_TABVIEW",
             Self::WidgetChart => "WIDGET_CHART",
             Self::WidgetHostProxy => "WIDGET_HOST_PROXY",
+            Self::WidgetTargetOverlay => "WIDGET_TARGET_OVERLAY",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -1002,6 +1079,7 @@ impl WidgetType {
             "WIDGET_TABVIEW" => Some(Self::WidgetTabview),
             "WIDGET_CHART" => Some(Self::WidgetChart),
             "WIDGET_HOST_PROXY" => Some(Self::WidgetHostProxy),
+            "WIDGET_TARGET_OVERLAY" => Some(Self::WidgetTargetOverlay),
             _ => None,
         }
     }
