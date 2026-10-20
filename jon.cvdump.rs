@@ -73,6 +73,25 @@ pub struct CvDumpArchive {
     /// on a capture-window bundle; a photo bundle has empty video + streams.
     #[prost(message, repeated, tag = "11")]
     pub shots: ::prost::alloc::vec::Vec<ShotCapture>,
+    /// The GigE camera link's `packets` trace level: one compacted ring file per
+    /// channel under `gige/`, described here. ONE ENTRY PER CHANNEL WHOSE RING
+    /// THE HARVESTER LOOKED FOR, the VideoChannel rule — a channel with no ring
+    /// file appears with zero records and an absent_reason rather than being
+    /// dropped. The ring BYTES are files, like the video segments; this is their
+    /// inventory plus what the harvest discarded and why. The `control` and
+    /// `frames` levels travel as STREAM_KIND_GIGE groups in `streams`.
+    #[prost(message, repeated, tag = "12")]
+    pub gige_packet_rings: ::prost::alloc::vec::Vec<GigePacketRing>,
+    /// The GigE camera link's `stats` trace: one compacted ring file per channel
+    /// under `gige/`, described here, each record one frame's MAX10 statistics
+    /// chunks beside the ISP statistics the harness published for the same
+    /// frame. ONE ENTRY PER CHANNEL WHOSE RING THE HARVESTER LOOKED FOR, the
+    /// VideoChannel rule — a channel with no ring file (heat has none at all)
+    /// appears with zero records and an absent_reason rather than being
+    /// dropped. The ring BYTES are files; this is their inventory plus what the
+    /// harvest discarded and why.
+    #[prost(message, repeated, tag = "13")]
+    pub gige_stats_rings: ::prost::alloc::vec::Vec<GigeStatsRing>,
 }
 /// One plane of one channel's photo. The output format keys on the plane's
 /// FORMAT tag from the control block, never on the plane index.
@@ -290,6 +309,25 @@ pub struct IntegrityReport {
     /// reported as lost video.
     #[prost(bool, tag = "10")]
     pub io_records_incomplete: bool,
+    /// A GigE packet ring file that EXISTED could not be read or failed
+    /// validation — bad magic, version or record length in its header, or a
+    /// record kept for the window that does not decode — so the window's packet
+    /// trace is unrecoverable later, and this IS partial. The refused channel's
+    /// GigePacketRing carries the reason too. A ring that does not exist (no file
+    /// on the box, the `packets` level never armed) does NOT set this flag: it is
+    /// recorded only as that channel's GigePacketRing.absent_reason.
+    #[prost(bool, tag = "11")]
+    pub gige_packet_rings_incomplete: bool,
+    /// A GigE stats ring file that EXISTED could not be read or failed
+    /// validation — bad magic, version or record length in its header, or a
+    /// record kept for the window that does not decode — so the window's
+    /// per-frame statistics pairs are unrecoverable later, and this IS partial.
+    /// The refused channel's GigeStatsRing carries the reason too. A ring that
+    /// does not exist (no file on the box, `gige_trace.stats` never on, a
+    /// channel that has no stats ring) does NOT set this flag: it is recorded
+    /// only as that channel's GigeStatsRing.absent_reason.
+    #[prost(bool, tag = "12")]
+    pub gige_stats_rings_incomplete: bool,
 }
 /// One channel's ring video: the segment files that cover , and the time
 /// window each was measured to hold.
@@ -335,6 +373,208 @@ pub struct VideoSegment {
     #[prost(bool, tag = "7")]
     pub open_end: bool,
 }
+/// One channel's GigE `packets` trace ring, copied off the box and compacted to
+/// the capture window.
+///
+/// On the box the ring is
+/// `/dev/shm/jettison/gige-<chan>/jon_gige_packets_<chan>.ring`, written by the
+/// receiver (gige-ingress, inside the sensor harness) only while the `packets`
+/// trace level is in force: a 64-byte `JGRG` header, then one 48-byte
+/// record per GVSP datagram received, in a 64 MiB file overwritten oldest-first
+/// under a seqlock (header layout GIGE_TRACE_RING_* in inc/gige/gige_trace.h).
+/// The camera side writes no packets ring. The harvester copies the ring while
+/// its writer may still be writing, keeps only the records no write could have
+/// touched during the copy (the seqlock rule of PacketRing::read in
+/// mods/gige/crates/gige-ingress/src/trace.rs), then keeps only those whose
+/// mono_ns falls inside .
+///
+/// mono_ns is CLOCK_MONOTONIC (the receive batch the datagram arrived in),
+/// compared here against the CLOCK_BOOTTIME window in CaptureWindow. On a
+/// target that never suspends the two coincide; that is a premise, not an
+/// identity.
+///
+/// The bundle file is itself a VALID ring, so the same readers read it: the
+/// box's 64-byte header with capacity, head and begun each set to
+/// record_count (every other header field as the box wrote it), then the kept
+/// records oldest-first from slot 0. Every ring reader refuses a zero-capacity
+/// header (RingHeader::decode), so when no record survives no file is written:
+/// path and sha256 are empty, record_count is 0 and absent_reason says why.
+///
+/// What it can NOT hold: datagrams the ring had already overwritten before the
+/// copy began (counted over the ring's life by overwritten_before_copy;
+/// window_start_lost says whether they reach into the window), datagrams the
+/// writer could not place (writer_refused), and datagrams the receiver never
+/// saw. A record proves a datagram ARRIVED; a missing packet id proves nothing
+/// until window_start_lost and overwritten_during_copy are both clear for the
+/// stretch it falls in and writer_refused is 0.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GigePacketRing {
+    /// "day" | "heat".
+    #[prost(string, tag = "1")]
+    pub channel: ::prost::alloc::string::String,
+    /// Bundle-relative, "gige/packets_<chan>.ring". Empty exactly when there is
+    /// no file — then absent_reason says why.
+    #[prost(string, tag = "2")]
+    pub path: ::prost::alloc::string::String,
+    /// Size of the bundle file; 0 when absent.
+    #[prost(uint64, tag = "3")]
+    pub bytes: u64,
+    /// Lowercase hex SHA-256 of the bundle file; empty when absent. The pattern
+    /// admits exactly those two forms, so an absent ring validates without a
+    /// placeholder digest and a present one is still held to 64 hex digits.
+    #[prost(string, tag = "4")]
+    pub sha256: ::prost::alloc::string::String,
+    /// Records in the bundle file — each one whole, decoded and inside .
+    /// Also the file's capacity, head and begun.
+    #[prost(uint64, tag = "5")]
+    pub record_count: u64,
+    /// Records the copy took that the writer may have overwritten while the copy
+    /// was being taken (refused by the seqlock rule), discarded. It counts losses
+    /// DURING the copy only; records overwritten before it began are counted
+    /// nowhere.
+    #[prost(uint64, tag = "6")]
+    pub overwritten_during_copy: u64,
+    /// Whole records whose mono_ns fell outside , discarded. Large values
+    /// are normal: the ring holds history from before t0 and keeps filling
+    /// between t1 and the copy. Not a loss.
+    #[prost(uint64, tag = "7")]
+    pub outside_window: u64,
+    /// The window's HEAD is missing from the packet trace: the ring had lost
+    /// records before they could be kept (it had wrapped before the copy, or
+    /// overwritten_during_copy is non-zero) AND the oldest record kept is later
+    /// than t0. A ring that never wrapped and simply has its first datagram after
+    /// t0 (the `packets` level armed mid-window, the stream started late) does
+    /// NOT set it. Per-channel and informational — it is not an IntegrityReport
+    /// degrade flag.
+    #[prost(bool, tag = "8")]
+    pub window_start_lost: bool,
+    /// Why there is no file: no ring on the box, the `packets` level never
+    /// armed, no record survived the seqlock and window filters, or the ring
+    /// could not be read or validated (that last case also sets
+    /// IntegrityReport.gige_packet_rings_incomplete). Empty when the file is
+    /// present.
+    #[prost(string, tag = "9")]
+    pub absent_reason: ::prost::alloc::string::String,
+    /// Records the WRITER could not place in the ring since it was created (the
+    /// ring header's refused count): datagrams the receiver took that the
+    /// packet trace never held. Cumulative over the ring's life, not scoped to
+    /// the window; non-zero means the trace under-counts packets somewhere, and
+    /// possibly inside the window. 0 when there is no ring to read.
+    #[prost(uint64, tag = "10")]
+    pub writer_refused: u64,
+    /// Records the ring no longer held when the copy began, because later
+    /// records overwrote them (records written minus capacity; 0 before the ring
+    /// first wrapped). Cumulative over the ring's life; whether any of them fell
+    /// inside the window is window_start_lost. 0 when there is no ring to read.
+    #[prost(uint64, tag = "11")]
+    pub overwritten_before_copy: u64,
+}
+/// One channel's GigE `stats` trace ring, copied off the box and compacted to
+/// the capture window.
+///
+/// On the box the ring is
+/// `/dev/shm/jettison/gige-<chan>/jon_gige_stats_<chan>.ring`, written by the
+/// receiver (the sensor harness) only while `gige_trace.stats` is on, and only
+/// for the day channel: the same 64-byte `JGRG` header and seqlock mechanism as
+/// the packets ring (GigePacketRing), its header's record length naming the
+/// kind, then one 40,272-byte `stats` record per frame the harness took — the
+/// frame's MAX10 statistics and footer chunk data as received, beside the ISP
+/// statistics block the harness published for that same frame (record layout
+/// STATS_OFF_* in mods/gige/crates/gige-wire/src/trace.rs). The ring holds a
+/// few minutes of frames, so a window longer than that loses its head before
+/// the harvest copies it (window_start_lost). The harvester copies it while its
+/// writer may still be writing, keeps only the records no write could have
+/// touched during the copy, then keeps only those whose mono_ns falls inside
+/// .
+///
+/// mono_ns is CLOCK_MONOTONIC when the harness WROTE the record (after the
+/// frame's ring publish, not its capture — the record's capture stamp is
+/// another field), at the same record offset as the packet record's, compared
+/// here against the CLOCK_BOOTTIME window in CaptureWindow. On a target that
+/// never suspends the two coincide; that is a premise, not an identity.
+///
+/// The bundle file is itself a VALID ring, laid out exactly as GigePacketRing
+/// describes for the packets ring: the box's header with capacity, head and
+/// begun each set to record_count, then the kept records oldest-first from
+/// slot 0. When no record survives no file is written: path and sha256 are
+/// empty, record_count is 0 and absent_reason says why.
+///
+/// What it can NOT hold: frames whose records the ring had already overwritten
+/// before the copy began (overwritten_before_copy; window_start_lost says
+/// whether they reach into the window), records the writer turned away
+/// (writer_refused), and frames the harness never recorded. A frame missing
+/// from the bundle proves nothing until window_start_lost and
+/// overwritten_during_copy are both clear for the stretch it falls in and
+/// writer_refused is 0.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GigeStatsRing {
+    /// "day" | "heat". Only the day channel has a stats ring; heat is listed
+    /// with an absent_reason, the VideoChannel rule.
+    #[prost(string, tag = "1")]
+    pub channel: ::prost::alloc::string::String,
+    /// Bundle-relative, "gige/stats_<chan>.ring". Empty exactly when there is
+    /// no file — then absent_reason says why.
+    #[prost(string, tag = "2")]
+    pub path: ::prost::alloc::string::String,
+    /// Size of the bundle file; 0 when absent.
+    #[prost(uint64, tag = "3")]
+    pub bytes: u64,
+    /// Lowercase hex SHA-256 of the bundle file; empty when absent. The pattern
+    /// admits exactly those two forms, so an absent ring validates without a
+    /// placeholder digest and a present one is still held to 64 hex digits.
+    #[prost(string, tag = "4")]
+    pub sha256: ::prost::alloc::string::String,
+    /// Records in the bundle file — each one whole, decoded and inside .
+    /// Also the file's capacity, head and begun.
+    #[prost(uint64, tag = "5")]
+    pub record_count: u64,
+    /// Records the copy took that the writer may have overwritten while the copy
+    /// was being taken (refused by the seqlock rule), discarded. It counts losses
+    /// DURING the copy only; records overwritten before it began are counted
+    /// nowhere.
+    #[prost(uint64, tag = "6")]
+    pub overwritten_during_copy: u64,
+    /// Whole records whose mono_ns fell outside , discarded. Large values
+    /// are normal: the ring holds history from before t0 and keeps filling
+    /// between t1 and the copy. Not a loss.
+    #[prost(uint64, tag = "7")]
+    pub outside_window: u64,
+    /// The window's HEAD is missing from the stats trace: the ring had lost
+    /// records before they could be kept (it had wrapped before the copy, or
+    /// overwritten_during_copy is non-zero) AND the oldest record kept is later
+    /// than t0. A ring that never wrapped and simply has its first record after
+    /// t0 (`gige_trace.stats` turned on mid-window) does NOT set it.
+    /// Per-channel and informational — it is not an IntegrityReport degrade
+    /// flag.
+    #[prost(bool, tag = "8")]
+    pub window_start_lost: bool,
+    /// Why there is no file: no ring on the box (heat has none; on day,
+    /// `gige_trace.stats` never turned on), no record survived the seqlock and
+    /// window filters, or the ring could not be read or validated (that last
+    /// case also sets IntegrityReport.gige_stats_rings_incomplete). Empty when
+    /// the file is present.
+    #[prost(string, tag = "9")]
+    pub absent_reason: ::prost::alloc::string::String,
+    /// Records the WRITER could not place in the ring since it started (the ring
+    /// header's refused count), across its life, not scoped to the window. The
+    /// harness's stats writer never advances this count, so it reads 0 today; a
+    /// record that writer could not write is counted in its own
+    /// `` receipt (stats_failed), not here. 0 when there is no
+    /// ring to read.
+    #[prost(uint64, tag = "10")]
+    pub writer_refused: u64,
+    /// Records the ring no longer held when the copy began, because later
+    /// records overwrote them (records written minus capacity; 0 before the ring
+    /// first wrapped). Cumulative over the ring's life; whether any of them fell
+    /// inside the window is window_start_lost. 0 when there is no ring to read.
+    #[prost(uint64, tag = "11")]
+    pub overwritten_before_copy: u64,
+    /// Bytes per record slot, read from the box ring's header (40,272 for the
+    /// `stats` record of the format it was written in). Lets a reader walk the
+    /// file without knowing the record format; 0 when absent.
+    #[prost(uint32, tag = "12")]
+    pub record_len: u32,
+}
 /// One contiguous run of records from ONE source.
 ///
 /// The records are carried as an opaque payload rather than as repeated nested
@@ -346,9 +586,10 @@ pub struct VideoSegment {
 pub struct StreamGroup {
     #[prost(enumeration = "StreamKind", tag = "1")]
     pub kind: i32,
-    /// The EXACT source, never sanitized: a redis stream key for kinds 1-3
-    /// (e.g. "logs:can:0x500", "logs:rotary:uart:tx"), a TSDB table name for
-    /// kind 4 (e.g. "state_logs").
+    /// The EXACT source, never sanitized: a redis stream key for every
+    /// redis-stream kind (e.g. "logs:can:0x500", "logs:rotary:uart:tx",
+    /// "logs:gige:day"), a TSDB table name for STREAM_KIND_TSDB_TABLE (e.g.
+    /// "state_logs"). Which kinds are which: see StreamKind.
     #[prost(string, tag = "2")]
     pub source: ::prost::alloc::string::String,
     /// How to turn payload back into records. See ArchiveCodec.
@@ -372,13 +613,14 @@ pub struct StreamGroup {
     /// in IntegrityReport.truncated_sources.
     #[prost(bool, tag = "7")]
     pub truncated: bool,
-    /// TSDB-table groups only (kind 4): the table's columns in ordinal order, so
-    /// the rows parse offline with no PostgreSQL catalog. Empty for redis-stream
-    /// kinds.
+    /// STREAM_KIND_TSDB_TABLE groups only: the table's columns in ordinal order,
+    /// so the rows parse offline with no PostgreSQL catalog. Empty for every
+    /// redis-stream kind.
     #[prost(message, repeated, tag = "8")]
     pub columns: ::prost::alloc::vec::Vec<ColumnDef>,
-    /// The records. Decode with codec, then parse as RedisStreamRecords for kinds
-    /// 1-3 or TableRows for kind 4.
+    /// The records. Decode with codec, then parse as TableRows for
+    /// STREAM_KIND_TSDB_TABLE and as RedisStreamRecords for every redis-stream
+    /// kind.
     #[prost(bytes = "vec", tag = "9")]
     pub payload: ::prost::alloc::vec::Vec<u8>,
 }
@@ -391,7 +633,8 @@ pub struct ColumnDef {
     #[prost(string, tag = "2")]
     pub r#type: ::prost::alloc::string::String,
 }
-/// The decoded payload of a redis-stream group (StreamKind 1-3).
+/// The decoded payload of a group of any redis-stream kind (every StreamKind
+/// except STREAM_KIND_TSDB_TABLE).
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RedisStreamRecords {
     #[prost(message, repeated, tag = "1")]
@@ -411,8 +654,8 @@ pub struct RedisStreamRecord {
     pub fields: ::prost::alloc::vec::Vec<RedisStreamField>,
 }
 /// A single redis field. value is RAW BYTES and is never UTF-8 decoded: the
-/// io-record streams carry binary payloads (DATCON frames, CAN blobs) that a
-/// text round-trip would destroy.
+/// io-record streams carry binary payloads (DATCON frames, CAN blobs, GigE
+/// trace records) that a text round-trip would destroy.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct RedisStreamField {
     #[prost(string, tag = "1")]
@@ -420,7 +663,7 @@ pub struct RedisStreamField {
     #[prost(bytes = "vec", tag = "2")]
     pub value: ::prost::alloc::vec::Vec<u8>,
 }
-/// The decoded payload of a TSDB-table group (StreamKind 4).
+/// The decoded payload of a STREAM_KIND_TSDB_TABLE group.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct TableRows {
     /// One row per entry, each the UTF-8 text of PostgreSQL row_to_json(t) — so a
@@ -547,6 +790,13 @@ impl ArchiveCodec {
 /// Groups are ordered by this value so every group of one kind is CONTIGUOUS in
 /// the encoded archive — the property a future codec needs, since a homogeneous
 /// byte run is what compresses.
+///
+/// Every kind except STREAM_KIND_TSDB_TABLE is a REDIS-STREAM kind: its source
+/// is a stream key on the LOGS redis and its payload is RedisStreamRecords.
+/// STREAM_KIND_TSDB_TABLE alone is a table slice. The comments on StreamGroup,
+/// RedisStreamRecords and TableRows refer to the kinds by that split, never by
+/// a numeric range, so a new redis-stream kind is declared here and nowhere
+/// else.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum StreamKind {
@@ -569,6 +819,26 @@ pub enum StreamKind {
     /// posts), each record's payload a self-verifying mh wire image
     /// (crc32c ‖ seq_abs ‖ MhEntry). payload is RedisStreamRecords.
     MotionHistory = 5,
+    /// `logs:gige:<channel>` on the LOGS redis (db 6) — the GigE camera link's
+    /// trace records at the `control` and `frames` trace levels. BOTH ends write
+    /// into the same per-channel stream: the receiver on the Orin (gige-ingress,
+    /// inside the sensor harness) and the camera-side sender (gige-device: the
+    /// twin, later the head). The record's own header says which side wrote it,
+    /// never the stream. Each entry carries ONE encoded record, field `rec`, in
+    /// the `JGTR` record format (authority mods/gige/crates/gige-wire/src/trace.rs,
+    /// C mirror inc/gige/gige_trace.h). One group per channel stream key. payload
+    /// is RedisStreamRecords.
+    ///
+    /// The writer trims each stream approximately (XADD MAXLEN ~), so a window
+    /// longer than the stream holds loses its HEAD to the trim before the harvest
+    /// reads it, and the group's `truncated` flag does NOT report that loss — it
+    /// reports only the harvester's own per-source cap.
+    ///
+    /// The `packets` trace level never reaches redis; its ring files are carried
+    /// as CvDumpArchive.gige_packet_rings. Nor does the day channel's `stats`
+    /// record (gige_trace.stats); its ring is carried as
+    /// CvDumpArchive.gige_stats_rings.
+    Gige = 6,
 }
 impl StreamKind {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -583,6 +853,7 @@ impl StreamKind {
             Self::FrameTap => "STREAM_KIND_FRAME_TAP",
             Self::TsdbTable => "STREAM_KIND_TSDB_TABLE",
             Self::MotionHistory => "STREAM_KIND_MOTION_HISTORY",
+            Self::Gige => "STREAM_KIND_GIGE",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -594,6 +865,7 @@ impl StreamKind {
             "STREAM_KIND_FRAME_TAP" => Some(Self::FrameTap),
             "STREAM_KIND_TSDB_TABLE" => Some(Self::TsdbTable),
             "STREAM_KIND_MOTION_HISTORY" => Some(Self::MotionHistory),
+            "STREAM_KIND_GIGE" => Some(Self::Gige),
             _ => None,
         }
     }
